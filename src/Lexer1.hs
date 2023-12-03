@@ -1,24 +1,24 @@
-module Lexer1 where 
+module Lexer1 where
 
-import Text.Parsec
-import Data.Char
-import Data.List
-import Data.Maybe (fromMaybe)
+import           Data.Char
+import           Data.List
+import           Data.Maybe  (fromMaybe)
+import           Text.Parsec
 
 data Token = Number Double | Plus | Minus | Mult | Div | Power | LParen | RParen
     deriving Show
 
-type Parser = Parsec String () 
+type Parser = Parsec String ()
 
 processNum::String -> Token
-processNum ('-' : xs ) = Number $ negate n where 
+processNum ('-' : xs ) = Number $ negate n where
     Number n = processNum xs
-processNum a = Number $ read (xs' ++ ys') where 
-    b = fromMaybe 0 (elemIndex '.' a) 
+processNum a = Number $ read (xs' ++ ys') where
+    b = fromMaybe 0 (elemIndex '.' a)
     (xs,ys) = splitAt b a
     xs' = if null xs then  "0" else xs
     ys' = if length ys == 1 then ".0" else ys
-    
+
 mapToToken :: String -> Token
 mapToToken s = case s of
      "(" -> LParen
@@ -28,7 +28,7 @@ mapToToken s = case s of
      "*" -> Mult
      "/" -> Div
      "^" -> Power
-     a -> processNum a
+     a   -> processNum a
 
 parseNumber::Parser String
 parseNumber = (++) <$> option "" (string "-") <*> ((++) <$> many digit <*> ( (++) <$> string "." <*> many digit))
@@ -66,3 +66,16 @@ tokenize input = map mapToToken <$> parse' input
 -- P -> (E)
 -- P -> num
 
+-- E ::= T Z
+-- Z ::= '+' T Z
+-- Z ::= '-' T Z
+-- Z ::= ''
+-- T ::= F Y
+-- Y ::= '/' F Y
+-- Y ::= '*' F Y
+-- Y ::= ''
+-- F ::= P X
+-- X ::= '^' P X
+-- X ::= '' 
+-- P ::= '(' E ')'
+-- P ::= num
