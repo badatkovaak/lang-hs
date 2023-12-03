@@ -1,50 +1,55 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Lexer where 
 
-import Data.Text(Text)
-import qualified Data.Text as T
-import qualified Text.Megaparsec as MP
-import qualified Text.Megaparsec.Char as C
-import qualified Text.Megaparsec.Char.Lexer as L
-import Data.Void (Void)
+import Text.Parsec
+import Data.Char
+import Data.List
+import Data.Maybe (fromMaybe)
 
-data Token = Number Double | Plus | Minus | Mult | Div | Power | LParen | RParen
 
-type Parser = MP.Parsec Void Text
+type Parser = Parsec String () 
 
-sc::Parser ()
-sc = L.space C.space1 (L.skipLineComment "#") (L.skipBlockComment "/*" "/*")  
+-- data Token = Number Double | Plus | Minus | Mult | Div | Power | LParen | RParen
+--     deriving Show
 
-symbol = L.symbol sc
-lexeme = L.lexeme sc
+type Number = Double
 
-lparen = symbol "("
-rparen = symbol ")"
-plus = symbol "+"
-minus = symbol "-"
-mult = symbol "*"
-divide = symbol "/"
-power = symbol "^"
+data TOperator = Plus | Minus | Mult | Div | Power
+    deriving Show
 
--- minus'::Maybe (Parser Text)
--- minus' = MP.try ( C.string "-" <|> 
+data Expr = Node Expr TOperator Expr | TTerminal Number
+    deriving Show
 
--- number::Parser Text
--- number = C.char '-' <*> digits <*> C.string "." <*> digits where 
---     digits =T.pack <$> MP.many C.digitChar
-    
--- lexeme number' where
-    -- number' = 
-    -- where dot = symbol "."
-    --         minus' = MP.optional minus
-    --         digits = T.pack <$> MP.many C.digitChar
+space'::Parser ()
+space' = skipMany $ char ' '
 
-parseToken::Parser Text
-parseToken = MP.choice [lparen, rparen, plus, minus, mult, divide, power]
+processNum::String -> Number
+processNum ('-' : xs ) = negate $ processNum xs 
+processNum a = read (xs' ++ ys') where 
+    b = fromMaybe 0 (elemIndex '.' a) 
+    (xs,ys) = splitAt b a
+    xs' = if null xs then  "0" else xs
+    ys' = if length ys == 1 then ".0" else ys
+ 
+parseNumber::Parser Number
+parseNumber = processNum <$> (space' *> num <* space')
+    where
+        num = (++) <$> option "" (string "-") <*> ((++) <$> many digit <*> ( (++) <$> string "." <*> many digit))
 
--- parseL
+parseOperator::Parser TOperator
+parseOperator = match' <$> ( space' *> oneOf "+-*/^" <* space')
+    where
+        match' a = case a of
+            '+' -> Plus
+            '-' -> Minus
+            '*' -> Mult
+            '/' -> Div
+            '^' -> Power
 
--- parseLParen s = 
+parseExpr::Parser Expr
+parseExpr = try (between (space' *> char '(') (char ')' <* space') parseNode) <|> (TTerminal <$> parseNumber)
 
--- parseToken s = MP.try (C.char '(' <|> C.char ')' )  
+parseNode::Parser Expr
+parseNode = Node <$> parseExpr <*> parseOperator <*> parseExpr
+
+parse'::String -> Either ParseError Expr
+parse' = runParser parseExpr () ""
