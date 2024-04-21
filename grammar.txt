@@ -11,3 +11,8 @@ X -> '^' P X
 X -> ''
 P -> '(' E ')'
 P -> id
+
+
+
+
+Num := Float | Int

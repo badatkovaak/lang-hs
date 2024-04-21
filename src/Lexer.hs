@@ -1,4 +1,4 @@
-module Lexer where
+module Lexer(Token) where
 
 import           Control.Applicative
 import           Data.Char
@@ -8,23 +8,84 @@ import qualified Text.Parsec         as P
 
 
 data Token =
-    LParen | RParen | Semicolon | Comma | Plus | Minus | Mult | Div | Power | IntLiteral Int | FloatLiteral Double | Id String
+    LParen
+    | RParen
+    | Semicolon
+    | Comma
+    | ThinArrow
+    | FatArrow
+    | Lambda
+    | Plus
+    | Minus
+    | Mult
+    | Div
+    | Power
+    | IntLiteral Int
+    | FloatLiteral Double
+    | Id String
     deriving (Show, Eq)
 
-type Parser = P.Parsec String ()
+type Lexer = P.Parsec String ()
 
-space' :: Parser ()
+space' :: Lexer ()
 space' = P.skipMany $ P.char ' '
 
-matchInt :: Parser String
-matchInt = (++) <$> P.option "" (P.string "-") <*> digits'
-    where digits' = P.string "0" <|> (((:) <$> P.oneOf "123456789") <*> P.many P.digit)
+-- matchInt :: Lexer String
+-- matchInt =
 
-parseInt :: Parser Token
-parseInt = IntLiteral . read <$> matchInt
+lexInt :: Lexer Token
+lexInt = IntLiteral . read <$> ((++) <$> minus <*> digits')
+    where minus =  P.option "" (P.string "-")
+          digits' = P.string "0" <|> (((:) <$> P.oneOf "123456789") <*> P.many P.digit)
 
-parseFloat :: Parser Token
-parseFloat = FloatLiteral . read <$> ((++) <$> P.option "" matchInt <*> ((++) <$> ((: []) <$> P.char '.') <*> P.many P.digit))
+addLastZero :: String -> String
+addLastZero s = case last s of
+    '.' -> s ++ "0"
+    _   -> s
 
-parseId :: Parser Token
-parseId = Id <$> P.many1 P.letter
+addFirstZero :: String -> String
+addFirstZero s = case head s of
+    '.' -> '0' : s
+    '-' -> case head $ tail s of
+        '.' -> "-" ++ "0" ++ tail s
+        _   -> s
+    _ -> s
+
+lexFloat :: Lexer Token
+lexFloat = sToFloat <$> ((++) <$> minus <*> ((++) <$> P.option "" digits' <*> ((++) <$> dot <*> P.many P.digit)))
+    where sToFloat = FloatLiteral . read . addFirstZero . addLastZero
+          minus = P.option "" (P.string "-")
+          digits' = P.string "0" <|> (((:) <$> P.oneOf "123456789") <*> P.many P.digit)
+          dot = (: []) <$> P.char '.'
+
+lexId :: Lexer Token
+lexId = Id <$> P.many1 P.letter
+
+charToToken :: Char -> Token
+charToToken c = case c of
+    '+'  -> Plus
+    '-'  -> Minus
+    '*'  -> Mult
+    '/'  -> Div
+    '^'  -> Power
+    '('  -> LParen
+    ')'  -> RParen
+    ';'  -> Semicolon
+    ','  -> Comma
+    '\\' -> Lambda
+
+strToToken s = case s of
+    "->" -> ThinArrow
+    "=>" -> FatArrow
+
+lexSingle :: Lexer Token
+lexSingle = charToToken <$> (P.char '+' <|> P.char '-' <|> P.char '*' <|> P.char '/' <|> P.char '^' <|> P.char '(' <|> P.char ')' <|> P.char ';' <|> P.char ',' <|> P.char '\\')
+
+lexFixed :: Lexer Token
+lexFixed = strToToken <$> (P.string "->" <|> P.string "=>")
+
+lexToken :: Lexer Token
+lexToken = space' *> (lexSingle <|>P.try lexFixed <|> P.try lexInt <|> P.try lexFloat <|> P.try lexId) <* space'
+
+lexTokens :: Lexer [Token]
+lexTokens = P.many1 lexToken

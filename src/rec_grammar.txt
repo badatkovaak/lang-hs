@@ -1,0 +1,10 @@
+A x1 x2 = S . I_1 x1
+
+R f1 f2
+
+Id Assign Lambda (Id)* ThinArrow Expr 
+
+Statment := Application | FuncDecl
+FuncDecl := Id (Id)* Assign Expr
+Application := Func Int
+Func := S | O | I_{Int} | Func Dot Func | R Func Func
