@@ -87,4 +87,14 @@ lexTokens = P.many1 lexToken
 
 type Parser = P.Parsec [Token] ()
 
+-- type Expr = 
+
+-- parseLiteral :: Parser 
+-- parseLiteral = 
+
+
+
+
+
+
 
