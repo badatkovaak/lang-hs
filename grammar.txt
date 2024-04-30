@@ -13,6 +13,7 @@ P -> '(' E ')'
 P -> id
 
 
-
-Expr := 
+ArExpr := Var (BinaryOp ArExpr)?
+BinaryOp := Plus | Minus | Mult | Div
+Var := Id | Num
 Num := Float | Int
